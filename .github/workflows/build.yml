@@ -1,0 +1,41 @@
+name: Build and Run Tests
+
+on:
+  workflow_call:
+    inputs:
+      run-tests:
+        description: 'Whether to also run unit tests, where possible.'
+        default: true
+        required: false
+        type: boolean
+      update-caches:
+        description: 'Whether to update the `ccache` or `bazel` caches, where possible.'
+        default: false
+        required: false
+        type: boolean
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}-${{ inputs.update-caches }}
+  cancel-in-progress: true
+
+jobs:
+  cmake-linux-x86_64:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - name: Restore ccache
+        uses: actions/cache/restore@v5
+        with:
+          path: ~/.ccache
+          key: ccache-${{ runner.os }}-${{ github.job }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            ccache-${{ runner.os }}-${{ github.job }}-
+      - name: Build
+        run: scripts/build-local.sh
+      - name: Save ccache
+        if: ${{ inputs.update-caches }}
+        uses: actions/cache/save@v5
+        with:
+          path: ~/.ccache
+          key: ccache-${{ runner.os }}-${{ github.job }}-${{ github.run_id }}-${{ github.run_attempt }}
